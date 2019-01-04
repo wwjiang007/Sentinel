@@ -1,6 +1,6 @@
 var app = angular.module('sentinelDashboardApp');
 
-app.controller('FlowCtl', ['$scope', '$stateParams', 'FlowService', 'ngDialog',
+app.controller('FlowController', ['$scope', '$stateParams', 'FlowServiceV2', 'ngDialog',
   'MachineService',
   function ($scope, $stateParams, FlowService, ngDialog,
     MachineService) {
@@ -72,7 +72,11 @@ app.controller('FlowCtl', ['$scope', '$stateParams', 'FlowService', 'ngDialog',
         app: $scope.app,
         ip: mac[0],
         port: mac[1],
-        limitApp: 'default'
+        limitApp: 'default',
+        clusterMode: false,
+        clusterConfig: {
+          thresholdType: 0
+        }
       };
       $scope.flowRuleDialog = {
         title: '新增流控规则',
@@ -89,12 +93,15 @@ app.controller('FlowCtl', ['$scope', '$stateParams', 'FlowService', 'ngDialog',
     };
 
     $scope.saveRule = function () {
-      if ($scope.flowRuleDialog.type == 'add') {
+      if (!FlowService.checkRuleValid($scope.currentRule)) {
+        return;
+      }
+      if ($scope.flowRuleDialog.type === 'add') {
         addNewRule($scope.currentRule);
-      } else if ($scope.flowRuleDialog.type == 'edit') {
+      } else if ($scope.flowRuleDialog.type === 'edit') {
         saveRule($scope.currentRule, true);
       }
-    }
+    };
 
     var confirmDialog;
     $scope.deleteRule = function (rule) {
@@ -115,7 +122,7 @@ app.controller('FlowCtl', ['$scope', '$stateParams', 'FlowService', 'ngDialog',
     };
 
     $scope.confirm = function () {
-      if ($scope.confirmDialog.type == 'delete_rule') {
+      if ($scope.confirmDialog.type === 'delete_rule') {
         deleteRule($scope.currentRule);
       } else {
         console.error('error');

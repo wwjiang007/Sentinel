@@ -25,11 +25,13 @@ import com.alibaba.csp.sentinel.node.metric.MetricNode;
  *
  * @author qinan.qn
  * @author leyou
+ * @author Eric Zhao
+ * @author leitao
  */
 public interface Node {
 
     /**
-     * Get incoming request per minute. {@code pass + blocked}
+     * Get incoming request per minute. {@code pass + block}
      */
     long totalRequest();
 
@@ -41,9 +43,9 @@ public interface Node {
     long totalSuccess();
 
     /**
-     * Get blocked request count per minute.
+     * Get block request count per minute.
      */
-    long blockedRequest();
+    long blockRequest();
 
     /**
      * Get exception count per minute.
@@ -56,12 +58,12 @@ public interface Node {
     long passQps();
 
     /**
-     * Get blocked request per second.
+     * Get block request per second.
      */
-    long blockedQps();
+    long blockQps();
 
     /**
-     * Get {@link #passQps()} + {@link #blockedQps()} request per second.
+     * Get {@link #passQps()} + {@link #blockQps()} request per second.
      */
     long totalQps();
 
@@ -70,6 +72,11 @@ public interface Node {
      */
     long successQps();
 
+    /**
+     * Get estimated max success QPS till now.
+     *
+     * @return max success QPS
+     */
     long maxSuccessQps();
 
     /**
@@ -79,9 +86,16 @@ public interface Node {
 
     /**
      * Get average rt per second.
+     *
+     * @return average response time per second
      */
     long avgRt();
 
+    /**
+     * Get minimal response time.
+     *
+     * @return recorded minimal response time
+     */
     long minRt();
 
     /**
@@ -90,7 +104,7 @@ public interface Node {
     int curThreadNum();
 
     /**
-     * Get last second blocked QPS.
+     * Get last second block QPS.
      */
     long previousBlockQps();
 
@@ -99,23 +113,43 @@ public interface Node {
      */
     long previousPassQps();
 
+    /**
+     * Fetch all valid metric nodes of resources.
+     *
+     * @return valid metric nodes of resources
+     */
     Map<Long, MetricNode> metrics();
 
+    /**
+     * Add pass count.
+     */
     void addPassRequest();
 
     /**
      * Add rt and success count.
      *
-     * @param rt
+     * @param rt response time
      */
     void rt(long rt);
 
-    void increaseBlockedQps();
+    /**
+     * Increase the block count.
+     */
+    void increaseBlockQps();
 
+    /**
+     * Increase the biz exception count.
+     */
     void increaseExceptionQps();
 
+    /**
+     * Increase current thread count.
+     */
     void increaseThreadNum();
 
+    /**
+     * Decrease current thread count.
+     */
     void decreaseThreadNum();
 
     /**
