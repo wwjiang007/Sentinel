@@ -17,23 +17,37 @@ package com.alibaba.csp.sentinel;
 
 import com.alibaba.csp.sentinel.context.Context;
 import com.alibaba.csp.sentinel.context.ContextUtil;
+import com.alibaba.csp.sentinel.metric.extension.MetricExtensionProvider;
 import com.alibaba.csp.sentinel.node.ClusterNode;
 import com.alibaba.csp.sentinel.node.DefaultNode;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.csp.sentinel.metric.extension.MetricExtension;
 
 /**
- * This class is used to record other exception except block exception.
+ * This class is used to record other exceptions except block exception.
  *
  * @author jialiang.linjl
+ * @author Eric Zhao
  */
 public final class Tracer {
 
+    /**
+     * Trace provided {@link Throwable} and increment exception count to entry in current context.
+     *
+     * @param e exception to record
+     */
     public static void trace(Throwable e) {
         trace(e, 1);
     }
 
+    /**
+     * Trace provided {@link Throwable} and add exception count to entry in current context.
+     *
+     * @param e     exception to record
+     * @param count exception count to add
+     */
     public static void trace(Throwable e, int count) {
-        if (e instanceof BlockException) {
+        if (e == null || e instanceof BlockException) {
             return;
         }
 
@@ -43,8 +57,63 @@ public final class Tracer {
         }
 
         DefaultNode curNode = (DefaultNode)context.getCurNode();
+        traceExceptionToNode(e, count, context.getCurEntry(), curNode);
+    }
+
+    /**
+     * Trace provided {@link Throwable} and add exception count to current entry in provided context.
+     *
+     * @param e     exception to record
+     * @param count exception count to add
+     * @since 1.4.2
+     */
+    public static void traceContext(Throwable e, int count, Context context) {
+        if (e == null || e instanceof BlockException) {
+            return;
+        }
+        if (context == null) {
+            return;
+        }
+
+        DefaultNode curNode = (DefaultNode)context.getCurNode();
+        traceExceptionToNode(e, count, context.getCurEntry(), curNode);
+    }
+
+    /**
+     * Trace provided {@link Throwable} and increment exception count to provided entry.
+     *
+     * @param e exception to record
+     * @since 1.4.2
+     */
+    public static void traceEntry(Throwable e, Entry entry) {
+        traceEntry(e, 1, entry);
+    }
+
+    /**
+     * Trace provided {@link Throwable} and add exception count to provided entry.
+     *
+     * @param e     exception to record
+     * @param count exception count to add
+     * @since 1.4.2
+     */
+    public static void traceEntry(Throwable e, int count, Entry entry) {
+        if (e == null || e instanceof BlockException) {
+            return;
+        }
+        if (entry == null || entry.getCurNode() == null) {
+            return;
+        }
+
+        DefaultNode curNode = (DefaultNode)entry.getCurNode();
+        traceExceptionToNode(e, count, entry, curNode);
+    }
+
+    private static void traceExceptionToNode(Throwable t, int count, Entry entry, DefaultNode curNode) {
         if (curNode == null) {
             return;
+        }
+        for (MetricExtension m : MetricExtensionProvider.getMetricExtensions()) {
+            m.addException(entry.getResourceWrapper().getName(), count, t);
         }
 
         // clusterNode can be null when Constants.ON is false.
@@ -52,7 +121,8 @@ public final class Tracer {
         if (clusterNode == null) {
             return;
         }
-        clusterNode.trace(e, count);
+        clusterNode.trace(t, count);
     }
 
+    private Tracer() {}
 }
